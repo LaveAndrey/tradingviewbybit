@@ -13,6 +13,8 @@ RUN pip install -r requirements.txt
 # Копируем остальные файлы проекта
 COPY . .
 
+COPY credentials.json /app/credentials.json
+
 ENV PYTHONPATH=/app
 
 # Указываем порт, который будет использовать приложение
