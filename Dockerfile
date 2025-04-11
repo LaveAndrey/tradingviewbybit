@@ -13,8 +13,6 @@ RUN pip install -r requirements.txt
 # Копируем остальные файлы проекта
 COPY . .
 
-ENV GOOGLE_APPLICATION_CREDENTIALS="/app/credentials.json"
-
 ENV PYTHONPATH=/app
 
 # Указываем порт, который будет использовать приложение

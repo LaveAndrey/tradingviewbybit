@@ -4,7 +4,6 @@ from routers.webhookbybit import router as webhook_router
 import logging
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-import os
 from pathlib import Path
 from app.config import Config
 

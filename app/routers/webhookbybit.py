@@ -15,7 +15,7 @@ cmc = CoinMarketCapService(api_key=Config.COINMARKETCAP_API_KEY)
 
 # Настройки Google Sheets
 SPREADSHEET_ID = Config.ID_TABLES  # ID вашей Google Таблицы
-BYBIT_API_URL = "https://api.bybit.com"
+BYBIT_API_URL = "https://api.bybit.com/derivatives/v3/public"
 
 update_tasks: Dict[str, asyncio.Task] = {}
 
@@ -33,7 +33,7 @@ async def get_bybit_price(symbol: str) -> float:
 
         # Выполняем запрос к Bybit API
         response = requests.get(
-            f"{BYBIT_API_URL}/v2/public/tickers",
+            f"{BYBIT_API_URL}/tickers",
             params={"symbol": trading_pair},
             timeout=10
         )
