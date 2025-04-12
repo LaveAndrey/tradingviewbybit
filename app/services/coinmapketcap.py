@@ -39,7 +39,7 @@ class CoinMarketCapService:
 
     async def get_market_data(self, symbol: str) -> Tuple[Optional[float], Optional[float]]:
         """Получает рыночные данные (капитализацию и объем)"""
-        clean_symbol = self.extract_symbol(symbol).lower()
+        clean_symbol = self.extract_symbol(symbol).upper()  # Всегда используем верхний регистр
 
         for attempt in range(self.retries):
             try:
@@ -49,7 +49,7 @@ class CoinMarketCapService:
                     'X-CMC_PRO_API_KEY': self.api_key
                 }
                 params = {
-                    'symbol': clean_symbol.upper(),
+                    'symbol': clean_symbol,
                     'convert': 'USD'
                 }
 
@@ -57,18 +57,18 @@ class CoinMarketCapService:
                 response.raise_for_status()
                 data = response.json()
 
+                # Новый способ обработки ответа для v2 API
                 if not data.get('data'):
                     logger.error(f"Нет данных для {clean_symbol} в ответе API")
                     return None, None
 
-                # Получаем первую монету из списка
+                # Получаем первый элемент из данных
                 coin_data = next(iter(data['data'].values()))
                 quote = coin_data['quote']['USD']
 
                 market_cap = quote.get('market_cap')
                 volume = quote.get('volume_24h')
 
-                # Проверка на нулевые значения
                 if market_cap is None or volume is None:
                     logger.warning(f"Отсутствуют данные для {clean_symbol}, попытка {attempt + 1}")
                     await asyncio.sleep(self.delay)
@@ -82,7 +82,7 @@ class CoinMarketCapService:
                     await asyncio.sleep(self.delay)
                 continue
             except Exception as e:
-                logger.error(f"Неожиданная ошибка: {e}")
+                logger.error(f"Неожиданная ошибка при обработке данных: {str(e)}", exc_info=True)
                 return None, None
 
         return None, None
