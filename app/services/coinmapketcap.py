@@ -39,7 +39,7 @@ class CoinMarketCapService:
 
     async def get_market_data(self, symbol: str) -> Tuple[Optional[float], Optional[float]]:
         """Получает рыночные данные (капитализацию и объем)"""
-        clean_symbol = self.extract_symbol(symbol).upper()  # Всегда используем верхний регистр
+        clean_symbol = self.extract_symbol(symbol).upper()
 
         for attempt in range(self.retries):
             try:
@@ -57,14 +57,25 @@ class CoinMarketCapService:
                 response.raise_for_status()
                 data = response.json()
 
-                # Новый способ обработки ответа для v2 API
+                # Улучшенная обработка структуры ответа
                 if not data.get('data'):
-                    logger.error(f"Нет данных для {clean_symbol} в ответе API")
+                    logger.error(f"Нет данных для {clean_symbol} в ответе API. Полный ответ: {data}")
                     return None, None
 
-                # Получаем первый элемент из данных
-                coin_data = next(iter(data['data'].values()))
-                quote = coin_data['quote']['USD']
+                # Получаем данные первой монеты из ответа
+                coin_data = list(data['data'].values())[0] if data['data'] else None
+                if not coin_data:
+                    logger.error(f"Нет данных о монете {clean_symbol}")
+                    return None, None
+
+                # Проверяем структуру данных
+                if isinstance(coin_data, list):
+                    coin_data = coin_data[0]  # Берем первый элемент если это список
+
+                quote = coin_data.get('quote', {}).get('USD', {})
+                if not quote:
+                    logger.error(f"Нет котировок USD для {clean_symbol}")
+                    return None, None
 
                 market_cap = quote.get('market_cap')
                 volume = quote.get('volume_24h')
@@ -76,13 +87,13 @@ class CoinMarketCapService:
 
                 return market_cap, volume
 
-            except RequestException as e:
-                logger.error(f"Ошибка запроса (попытка {attempt + 1}): {e}")
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Ошибка запроса (попытка {attempt + 1}): {str(e)}")
                 if attempt < self.retries - 1:
                     await asyncio.sleep(self.delay)
                 continue
             except Exception as e:
-                logger.error(f"Неожиданная ошибка при обработке данных: {str(e)}", exc_info=True)
+                logger.error(f"Критическая ошибка при обработке данных: {str(e)}", exc_info=True)
                 return None, None
 
         return None, None
