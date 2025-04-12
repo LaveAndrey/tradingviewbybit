@@ -12,11 +12,11 @@ class CoinMarketCapService:
         self.api_key = api_key
         self.retries = retries
         self.delay = delay
-        self._coin_cache = {}  # Кэш для хранения данных о монетах
-        self.base_url = "https://pro-api.coinmarketcap.com/v1"
+        self._coin_cache = {}
+        self.base_url = "https://pro-api.coinmarketcap.com/v2"  # Обновлено до v2 API
 
     async def _get_all_coins(self) -> Dict:
-        """Получает и кэширует список всех монет с их ID"""
+        """Получает и кэширует список всех монет"""
         if not self._coin_cache:
             try:
                 url = f"{self.base_url}/cryptocurrency/map"
@@ -39,45 +39,53 @@ class CoinMarketCapService:
 
     async def get_market_data(self, symbol: str) -> Tuple[Optional[float], Optional[float]]:
         """Получает рыночные данные (капитализацию и объем)"""
-        try:
-            coins = await self._get_all_coins()
-            coin_data = coins.get(symbol.lower())
-            if not coin_data:
-                logger.warning(f"Монета {symbol} не найдена")
+        clean_symbol = self.extract_symbol(symbol).lower()
+
+        for attempt in range(self.retries):
+            try:
+                url = f"{self.base_url}/cryptocurrency/quotes/latest"
+                headers = {
+                    'Accepts': 'application/json',
+                    'X-CMC_PRO_API_KEY': self.api_key
+                }
+                params = {
+                    'symbol': clean_symbol.upper(),
+                    'convert': 'USD'
+                }
+
+                response = requests.get(url, headers=headers, params=params)
+                response.raise_for_status()
+                data = response.json()
+
+                if not data.get('data'):
+                    logger.error(f"Нет данных для {clean_symbol} в ответе API")
+                    return None, None
+
+                # Получаем первую монету из списка
+                coin_data = next(iter(data['data'].values()))
+                quote = coin_data['quote']['USD']
+
+                market_cap = quote.get('market_cap')
+                volume = quote.get('volume_24h')
+
+                # Проверка на нулевые значения
+                if market_cap is None or volume is None:
+                    logger.warning(f"Отсутствуют данные для {clean_symbol}, попытка {attempt + 1}")
+                    await asyncio.sleep(self.delay)
+                    continue
+
+                return market_cap, volume
+
+            except RequestException as e:
+                logger.error(f"Ошибка запроса (попытка {attempt + 1}): {e}")
+                if attempt < self.retries - 1:
+                    await asyncio.sleep(self.delay)
+                continue
+            except Exception as e:
+                logger.error(f"Неожиданная ошибка: {e}")
                 return None, None
 
-            for attempt in range(self.retries):
-                try:
-                    url = f"{self.base_url}/cryptocurrency/quotes/latest"
-                    headers = {
-                        'Accepts': 'application/json',
-                        'X-CMC_PRO_API_KEY': self.api_key
-                    }
-                    params = {
-                        'id': coin_data['id'],
-                        'convert': 'USD'
-                    }
-
-                    response = requests.get(url, headers=headers, params=params)
-                    response.raise_for_status()
-
-                    data = response.json()
-                    coin_info = data['data'][str(coin_data['id'])]
-                    quote = coin_info['quote']['USD']
-
-                    market_cap = quote.get('market_cap')
-                    volume = quote.get('volume_24h')
-
-                    return market_cap, volume
-                except RequestException as e:
-                    logger.error(f"Попытка {attempt + 1} не удалась: {e}")
-                    if attempt < self.retries - 1:
-                        await asyncio.sleep(self.delay)
-
-            return None, None
-        except Exception as e:
-            logger.error(f"Ошибка в get_market_data: {e}")
-            return None, None
+        return None, None
 
     @staticmethod
     def extract_symbol(ticker: str) -> str:
@@ -93,4 +101,4 @@ class CoinMarketCapService:
         """Форматирует числа с разделителями"""
         if value is None:
             return "N/A"
-        return f"{value:,.2f}" if isinstance(value, float) else f"{int(value):,}"
+        return f"{value:,.2f}" if value >= 1000 else f"{value:.2f}"
