@@ -15,7 +15,7 @@ cmc = CoinMarketCapService(api_key=Config.COINMARKETCAP_API_KEY)
 
 # Настройки Google Sheets
 SPREADSHEET_ID = Config.ID_TABLES  # ID вашей Google Таблицы
-BYBIT_API_URL = "https://api.bybit.com/derivatives/v3/public"
+BYBIT_API_URL = "https://api.bybit.com/v5/market/tickers"
 
 update_tasks: Dict[str, asyncio.Task] = {}
 
@@ -33,8 +33,11 @@ async def get_bybit_price(symbol: str) -> float:
 
         # Выполняем запрос к Bybit API
         response = requests.get(
-            f"{BYBIT_API_URL}/tickers",
-            params={"symbol": trading_pair},
+            BYBIT_API_URL,
+            params={
+                "category": "linear",  # Используйте "spot" для спотового рынка
+                "symbol": trading_pair
+            },
             timeout=10
         )
 
@@ -46,8 +49,8 @@ async def get_bybit_price(symbol: str) -> float:
             raise ValueError(f"Invalid API response structure: {data}")
 
         # Получаем цену последней сделки
-        ticker = data['result'][0]
-        price = float(ticker['last_price'])
+        ticker = data["result"]["list"][0]
+        price = float(ticker["lastPrice"])
         logger.info(f"Успешно получена цена для {clean_symbol} с Bybit: {price}")
 
         return price
