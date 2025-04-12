@@ -112,4 +112,9 @@ class CoinMarketCapService:
         """Форматирует числа с разделителями"""
         if value is None:
             return "N/A"
-        return f"{value:,.2f}" if value >= 1000 else f"{value:.2f}"
+
+        # Преобразуем в целое число (отбрасываем дробную часть)
+        int_value = int(value)
+
+        # Форматируем с разделителями тысяч
+        return f"{int_value:,}$"  # Добавляем знак доллара
