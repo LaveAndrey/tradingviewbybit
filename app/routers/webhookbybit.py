@@ -161,7 +161,12 @@ async def webhook(request: Request):
             f"Trading on Bybit - *https://www.bybit.com*"
         )
 
-        TelegramBot.send_message(text=message, chat_id=Config.CHAT_IDTELEGRAM)
+        try:
+            TelegramBot.send_message(text=message, chat_id=Config.CHAT_ID_TRADES)
+            logger.info(message)
+        except Exception as e:
+            logger.error(f"Failed to send Telegram message: {e}")
+            raise HTTPException(status_code=500, detail="Failed to send notification")
 
         # Запись в Google Sheets
         sheet.append_row([
