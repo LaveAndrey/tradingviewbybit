@@ -162,7 +162,7 @@ async def webhook(request: Request):
         )
 
         try:
-            TelegramBot.send_message(text=message, chat_id=Config.CHAT_ID_TRADES)
+            TelegramBot.send_message(text=message, chat_id=Config.CHAT_IDTELEGRAM)
             logger.info(message)
         except Exception as e:
             logger.error(f"Failed to send Telegram message: {e}")
