@@ -156,8 +156,8 @@ async def webhook(request: Request):
             f"{'🟢' if action.lower() == 'buy' else '🔴'} *{action.upper()}*\n\n"
             f"*{symbol.upper()}*\n\n"
             f"PRICE - *{current_price}$*\n"
-            f"MARKET CAP - *{cmc.format_number(market_cap)}$*\n"
-            f"24H VOLUME - *{cmc.format_number(volume_24h)}$*\n\n"
+            f"MARKET CAP - *{cmc.format_number(market_cap)}*\n"
+            f"24H VOLUME - *{cmc.format_number(volume_24h)}*\n\n"
             f"Trading on Bybit - *https://www.bybit.com*"
         )
 
